@@ -1,20 +1,21 @@
-name: Terraform Plan & Apply (prod)
+name: Terraform Plan & Apply
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+
+env:
+  AWS_REGION: ap-south-1
+  TF_IN_AUTOMATION: true
 
 jobs:
   terraform:
+    name: Terraform Deploy
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    env:
-      AWS_REGION: ap-south-1
-      TF_IN_AUTOMATION: true
 
     steps:
       - name: Checkout
@@ -25,12 +26,12 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ap-south-1
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          terraform_version: 1.9.5
+          terraform_version: 1.8.0
 
       - name: Terraform Init
         run: terraform -chdir=envs/prod init -input=false
@@ -41,12 +42,6 @@ jobs:
       - name: Terraform Plan
         run: terraform -chdir=envs/prod plan -out=tfplan -input=false
 
-      - name: Upload Plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan-prod
-          path: envs/prod/tfplan
-
       - name: Terraform Apply (only on main)
         if: ${{ github.ref_name == 'main' }}
-        run: terraform -chdir=envs/prod apply -input=false -auto-approve tfplan
+        run: terraform -chdir=envs/prod apply -auto-approve -input=false tfplan
